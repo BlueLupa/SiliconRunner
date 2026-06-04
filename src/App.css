@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@theme {
+  --color-void: #060D07;
+  --color-abyss: #0A1410; /* space */
+  --color-shadow-moss: #111F14; /* shadow purple */
+
+  --color-pulse: #39FF6A; /* event horizon */
+  --color-aurora: #7DFFAA; /* nebula */
+  --color-phosphor: #B8FFD0; /* echo */
+  --color-circuit: #1E3324; /* Metal */
+
+  --color-liquid: rgba(14, 32, 18, 0.55);
+  --color-glass-border: rgba(100, 255, 140, 0.25);
+  --color-opaque-border: rgba(100, 255, 140, 1.0);
+
+  --color-terminal: #EDFFF3; /* starlight */
+  --color-muted: #6B9C78;
+}
+
+.custom-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+:root {
+  filter: saturate(130%);
+}
+
+body {
+  background-color: var(--color-void);
+  color: var(--color-void);
+  user-select: none;
+}
