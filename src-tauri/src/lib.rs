@@ -249,6 +249,7 @@ fn get_core_kinds() -> u32 {
     }
 }
 
+#[cfg(target_os = "macos")]
 fn build_core_kinds(n: u32) -> Vec<bool> {
     let p_count = get_core_kinds();
     (0..n)
@@ -296,7 +297,7 @@ fn fetch_info(state: State<'_, AppState>) -> Result<UpdatePayload, String> {
                         }
                         #[cfg(not(target_os = "macos"))]
                         {
-                            perf = parent.subtype() == Some("IntelCore");
+                            perf = parent.subtype() == Some(c"IntelCore");
                         }
                     }
                     if let Some(ObjectAttributes::Cache(cache)) = parent.attributes() {
@@ -670,7 +671,7 @@ pub fn run() {
             });
 
             #[cfg(target_os = "macos")]
-            let t = 1;
+            let t = 0;
 
             #[cfg(not(target_os = "macos"))]
             let t = 3;
@@ -681,34 +682,41 @@ pub fn run() {
                 let mut sampler = Sampler::new().unwrap();
 
                 loop {
-                    std::thread::sleep(Duration::from_secs(t));
-
                     let state = h.try_state::<AppState>().unwrap();
-                    let x = state.info_type.lock().ok();
-                    if let Some(inf) = x {
-                        match inf.clone() {
-                            0 => {
-                                if let Ok(info) = update_info(&state) {
-                                    h.emit("update_info", info).unwrap_or_else(|e| {
-                                        eprintln!("emit error: {}", e);
-                                    });
-                                }
-                            }
-                            1 => {
-                                #[cfg(target_os = "macos")]
-                                let out = update_gpu_info(&state, &mut sampler);
 
-                                #[cfg(not(target_os = "macos"))]
-                                let out = update_gpu_info(&state);
-
-                                if let Ok(info) = out {
-                                    h.emit("update_gpu_info", info).unwrap_or_else(|e| {
-                                        eprintln!("emit error: {}", e);
-                                    });
-                                }
-                            }
-                            _ => {}
+                    let inf = match state.info_type.lock() {
+                        Ok(guard) => *guard,
+                        Err(_) => {
+                            std::thread::sleep(Duration::from_secs(2));
+                            continue;
                         }
+                    };
+
+                    match inf.clone() {
+                        0 => {
+                            std::thread::sleep(Duration::from_secs(2));
+                            if let Ok(info) = update_info(&state) {
+                                h.emit("update_info", info).unwrap_or_else(|e| {
+                                    eprintln!("emit error: {}", e);
+                                });
+                            }
+                        }
+                        1 => {
+                            std::thread::sleep(Duration::from_secs(t));
+
+                            #[cfg(target_os = "macos")]
+                            let out = update_gpu_info(&state, &mut sampler);
+
+                            #[cfg(not(target_os = "macos"))]
+                            let out = update_gpu_info(&state);
+
+                            if let Ok(info) = out {
+                                h.emit("update_gpu_info", info).unwrap_or_else(|e| {
+                                    eprintln!("emit error: {}", e);
+                                });
+                            }
+                        }
+                        _ => {}
                     }
                 }
             });
