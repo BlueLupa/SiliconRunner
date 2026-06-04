@@ -267,7 +267,7 @@ fn fetch_info(state: State<'_, AppState>) -> Result<UpdatePayload, String> {
         .map(|c| c.brand().to_string())
         .unwrap_or_else(|| "Unknown CPU".to_string());
 
-    let kinds: Vec<_>;
+    let kinds: Vec<bool>;
     #[cfg(target_os = "macos")]
     {
         kinds = build_core_kinds(sys.cpus().len() as u32);
