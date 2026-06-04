@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Cpu, CodeXml, Pencil, Activity, Laptop, X as Cross, SquareCode, HardDrive, GitCompare, Gauge, Settings, Gpu } from 'lucide-react';
 import "./App.css";
 import { listen } from "@tauri-apps/api/event";
-import { b } from "framer-motion/client";
 
 function Laser({ v, e }: any) {
   return <div className={`${v ? "bg-linear-to-b h-full w-px mx-1" : "bg-linear-to-r h-px w-full my-2"} from-transparent from-2% via-pulse to-transparent to-98% transform-gpu select-none z-50 ${e ? e : "opacity-20"}`} />
@@ -707,28 +706,5 @@ function App() {
       </main></>
   );
 }
-
-function Logo() {
-  return (
-    <>
-      <div
-        data-tauri-drag-region
-        className="fixed top-0 left-0 right-0 h-8 z-9999 bg-transparent select-none"
-        onMouseDown={(event) => {
-          if (event.button === 0) {
-            void getCurrentWindow().startDragging();
-          }
-        }}
-      />
-      <main className="relative h-screen w-screen bg-[#050a06] p-8 selection:bg-terminal/50 select-text overflow-hidden">
-        <div className="flex flex-col items-center justify-center h-full w-full saturate-120">
-          <div className="font-mono text-phosphor tracking-[0.6em] ml-[0.6em] text-6xl uppercase font-semibold transform-gpu drop-shadow-[0_0_24px_var(--color-aurora)]">Silicon</div>
-          <div className="w-36 pt-3 pb-1 scale-200"><Laser v={false} e="opacity-40 drop-shadow-[0_0_2px_var(--color-aurora)]"/></div>
-          <div className="font-mono text-muted tracking-[0.3em] ml-[0.3em] font-extrabold text-2xl uppercase mt-1">Runner</div>
-        </div>
-      </main></>
-  );
-}
-
 
 export default App;
