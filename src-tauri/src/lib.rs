@@ -267,15 +267,8 @@ fn fetch_info(state: State<'_, AppState>) -> Result<UpdatePayload, String> {
         .map(|c| c.brand().to_string())
         .unwrap_or_else(|| "Unknown CPU".to_string());
 
-    let kinds: Vec<bool>;
     #[cfg(target_os = "macos")]
-    {
-        kinds = build_core_kinds(sys.cpus().len() as u32);
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        kinds = Vec::new();
-    }
+    let kinds = build_core_kinds(sys.cpus().len() as u32);
 
     let some_top = Topology::new();
     let base_threads: Vec<Thread> = if let Ok(top) = some_top {

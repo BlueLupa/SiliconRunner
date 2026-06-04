@@ -70,7 +70,7 @@ jobs:
         if: startsWith(matrix.platform, 'ubuntu')
         run: |
           sudo apt-get update
-          sudo apt-get install -y pkg-config libwebkit2gtk-4.1-dev librsvg2-dev libssl-dev protobuf-compiler libhwloc-dev
+          sudo apt-get install -y pkg-config libwebkit2gtk-4.1-dev librsvg2-dev libssl-dev protobuf-compiler libhwloc-dev libudev-dev libdrm-dev
 
       - name: Install macOS dependencies
         if: startsWith(matrix.platform, 'macos')
