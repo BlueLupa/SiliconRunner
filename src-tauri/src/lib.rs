@@ -29,7 +29,7 @@ struct AppState {
     config: Mutex<Option<Config>>,
     app_dir: String,
     info_type: Mutex<u32>,
-    smi: AllSmi,
+    smi: Option<AllSmi>,
     base_gpu: GPUPayload,
 }
 
@@ -454,39 +454,42 @@ fn init_config(state: State<'_, AppState>) -> Result<Config, String> {
 
 #[cfg(not(target_os = "macos"))]
 fn update_gpu_info(state: &AppState) -> Result<GPUPayload, String> {
-    let smi = &state.smi;
-    let base = &state.base_gpu;
+    if let Some(smi) = &state.smi {
+        let base = &state.base_gpu;
 
-    let mut gpux = "".to_string();
-    let mut coresx = 0;
+        let mut gpux = "".to_string();
+        let mut coresx = 0;
 
-    for g in smi.get_gpu_info() {
-        let gcores = g.gpu_core_count.unwrap_or(0);
-        if gcores > coresx {
-            coresx = gcores;
-            gpux = g.uuid.clone();
+        for g in smi.get_gpu_info() {
+            let gcores = g.gpu_core_count.unwrap_or(0);
+            if gcores > coresx {
+                coresx = gcores;
+                gpux = g.uuid.clone();
+            }
         }
-    }
-    if let Some(gpu) = smi.get_gpu_by_uuid(&gpux) {
-        let util = gpu.utilization as f32;
-        let vu = (gpu.used_memory as f64 * 0.000000001) as f32;
-        let temp = gpu.temperature as f32;
-        let freq = gpu.frequency as f32;
-        let power = gpu.power_consumption as f32;
+        if let Some(gpu) = smi.get_gpu_by_uuid(&gpux) {
+            let util = gpu.utilization as f32;
+            let vu = (gpu.used_memory as f64 * 0.000000001) as f32;
+            let temp = gpu.temperature as f32;
+            let freq = gpu.frequency as f32;
+            let power = gpu.power_consumption as f32;
 
-        Ok(GPUPayload {
-            util,
-            vu,
-            vt: base.vt,
-            temp,
-            name: base.name.clone(),
-            hname: base.hname.clone(),
-            freq,
-            power,
-            cores: base.cores,
-        })
+            Ok(GPUPayload {
+                util,
+                vu,
+                vt: base.vt,
+                temp,
+                name: base.name.clone(),
+                hname: base.hname.clone(),
+                freq,
+                power,
+                cores: base.cores,
+            })
+        } else {
+            Err("Cannot retrieve GPU info.".to_string())
+        }
     } else {
-        Err("Cannot retrieve GPU info.".to_string())
+        return Err("Cannot find GPU".to_string());
     }
 }
 
@@ -517,29 +520,32 @@ fn update_gpu_info(state: &AppState, sampler: &mut Sampler) -> Result<GPUPayload
 
 #[tauri::command]
 fn fetch_gpu_info(state: State<'_, AppState>) -> Result<GPUPayload, String> {
-    let smi = &state.smi;
-    let base = &state.base_gpu;
-    if let Some(gpu) = smi.get_gpu_info().get(0) {
-        let util = gpu.utilization as f32;
-        let vu = (gpu.used_memory as f64 * 0.000000001) as f32;
-        let temp = gpu.temperature as f32;
-        let freq = gpu.frequency as f32;
-        let power = gpu.power_consumption as f32;
-        // instance and devuice type
+    if let Some(smi) = &state.smi {
+        let base = &state.base_gpu;
+        if let Some(gpu) = smi.get_gpu_info().get(0) {
+            let util = gpu.utilization as f32;
+            let vu = (gpu.used_memory as f64 * 0.000000001) as f32;
+            let temp = gpu.temperature as f32;
+            let freq = gpu.frequency as f32;
+            let power = gpu.power_consumption as f32;
+            // instance and devuice type
 
-        Ok(GPUPayload {
-            util,
-            vu,
-            vt: base.vt,
-            temp,
-            name: base.name.clone(),
-            hname: base.hname.clone(),
-            freq,
-            power,
-            cores: base.cores,
-        })
+            Ok(GPUPayload {
+                util,
+                vu,
+                vt: base.vt,
+                temp,
+                name: base.name.clone(),
+                hname: base.hname.clone(),
+                freq,
+                power,
+                cores: base.cores,
+            })
+        } else {
+            Err("Cannot retrieve GPU info.".to_string())
+        }
     } else {
-        Err("Cannot retrieve GPU info.".to_string())
+        return Err("Cannot find GPU".to_string());
     }
 }
 
@@ -659,7 +665,7 @@ pub fn run() {
                 config: Mutex::new(None),
                 app_dir: app_dir.to_str().unwrap().to_string(),
                 info_type: Mutex::new(0),
-                smi,
+                smi: Some(smi),
                 base_gpu,
             });
 
