@@ -461,7 +461,7 @@ fn update_gpu_info(state: &AppState) -> Result<GPUPayload, String> {
         let mut coresx = 0;
 
         for g in smi.get_gpu_info() {
-            let gcores = g.gpu_core_count.unwrap_or(0);
+            let gcores = g.gpu_core_count.unwrap_or(1);
             if gcores > coresx {
                 coresx = gcores;
                 gpux = g.uuid.clone();
@@ -602,42 +602,54 @@ pub fn run() {
         swap: (sys.used_swap() as f32) * 0.000000001,
         variance: 0.0,
     };
-    let smi = AllSmi::new().unwrap_or(AllSmi::new().unwrap_or({
-        std::thread::sleep(Duration::from_secs(1));
-        AllSmi::new().unwrap()
-    }));
+    let smi = AllSmi::new().ok();
+    
+    let mut base_gpu = GPUPayload {
+            util: 0.0,
+            vu: 0.0,
+            vt: 0.1,
+            temp: 0.0,
+            name: "Unknown".to_string(),
+            hname: "Unknown".to_string(),
+            freq: 0.0,
+            power: 0.0,
+            cores: 0,
+        };
 
-    let gpu_info = smi.get_gpu_info();
+    if let Some(s) = &smi {
+        let gpu_info = s.get_gpu_info();
 
-    let cores = if let Some(gpu) = smi.get_gpu_info().get(0) {
-        gpu.gpu_core_count.unwrap_or(0)
-    } else {
-        0
-    };
+        let cores = if let Some(gpu) = s.get_gpu_info().get(0) {
+            gpu.gpu_core_count.unwrap_or(0)
+        } else {
+            0
+        };
 
-    let base_gpu = GPUPayload {
-        util: 0.0,
-        vu: 0.0,
-        vt: if let Some(g) = gpu_info.get(0) {
-            (g.total_memory as f64 * 0.000000001) as f32
-        } else {
-            0.0
-        },
-        temp: 0.0,
-        name: if let Some(g) = gpu_info.get(0) {
-            g.name.clone()
-        } else {
-            "Unknown".to_string()
-        },
-        hname: if let Some(g) = gpu_info.get(0) {
-            g.hostname.clone()
-        } else {
-            "Unknown".to_string()
-        },
-        freq: 0.0,
-        power: 0.0,
-        cores,
-    };
+        base_gpu = GPUPayload {
+            util: 0.0,
+            vu: 0.0,
+            vt: if let Some(g) = gpu_info.get(0) {
+                (g.total_memory as f64 * 0.000000001) as f32
+            } else {
+                0.1
+            },
+            temp: 0.0,
+            name: if let Some(g) = gpu_info.get(0) {
+                g.name.clone()
+            } else {
+                "Unknown".to_string()
+            },
+            hname: if let Some(g) = gpu_info.get(0) {
+                g.hostname.clone()
+            } else {
+                "Unknown".to_string()
+            },
+            freq: 0.0,
+            power: 0.0,
+            cores,
+        };
+    }
+
     tauri::Builder::default()
         .setup(|app| {
             let app_dir = app
@@ -665,7 +677,7 @@ pub fn run() {
                 config: Mutex::new(None),
                 app_dir: app_dir.to_str().unwrap().to_string(),
                 info_type: Mutex::new(0),
-                smi: Some(smi),
+                smi,
                 base_gpu,
             });
 
