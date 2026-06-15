@@ -133,7 +133,9 @@ function ThreadCard({ x, data, config }: any) {
       <div className="flex flex-row items-center justify-between w-full p-2">
         <div className="flex flex-col items-start justify-center">
           <div className="text-transparent bg-clip-text bg-linear-to-br from-terminal to-pulse font-mono tracking-widest m-2 shrink-0 text-xs select-none uppercase">{x.name.length <= 2 ? "Thread " : ""}{x.name}</div>
-          <div className="text-phosphor/50 font-mono tracking-widest text-[0.6rem] ml-2 uppercase select-none">{x.perf ? "Performance" : "Efficiency"}</div>
+          {x.perf !== 2 &&
+            <div className="text-phosphor/50 font-mono tracking-widest text-[0.6rem] ml-2 uppercase select-none">{x.perf == 1 ? "Performance" : "Efficiency"}</div>
+          }
         </div>
         <div className="text-pulse font-mono tracking-widest mr-2">{(Math.round(x.util)) < 10 ? "0" : ""}{(Math.round(x.util))}%</div>
       </div>
@@ -279,7 +281,7 @@ interface Thread {
   freq: number,
   l1: number,
   l2: number,
-  perf: boolean,
+  perf: number,
   os: number
 }
 

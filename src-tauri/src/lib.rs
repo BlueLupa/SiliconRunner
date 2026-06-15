@@ -90,7 +90,7 @@ struct Thread {
     freq: f32,
     l1: u64,
     l2: u64,
-    perf: bool,
+    perf: u32,
     os: u32,
 }
 
@@ -105,15 +105,13 @@ fn format_time(secs: u64) -> String {
     }
 }
 
-// ADD GLOBAL CONTEXT SWITCHES LATER !!!
-
 const KW: [&str; 6] = [
-    "tdie",         // AMD (Zen)
-    "tctl",         // AMD legacy
-    "package id 0", // Intel
-    "cpu thermal",  // macOS / Linux generic
-    "k10temp",      // AMD kernel (Linux)
-    "coretemp",     // Intel kernel (Linux)
+    "tdie",
+    "tctl",
+    "package id 0",
+    "cpu thermal",
+    "k10temp",
+    "coretemp",
 ];
 
 fn update_threads(sys: &mut System, base: &Vec<Thread>) -> Result<Vec<Thread>, String> {
@@ -278,19 +276,17 @@ fn fetch_info(state: State<'_, AppState>) -> Result<UpdatePayload, String> {
                 let mut l1 = 0;
                 let mut l2 = 0;
 
-                let mut perf = true;
+                let mut perf = 2;
                 let mut c = pu.parent();
                 while let Some(parent) = c {
                     if parent.object_type() == ObjectType::Core {
                         #[cfg(target_os = "macos")]
                         {
                             if let Some(idx) = pu.os_index() {
-                                perf = kinds.get(idx).copied().unwrap_or(true);
+                                if let Some(p) = kinds.get(idx) {
+                                    perf = if *p { 1 } else { 0 };
+                                }
                             }
-                        }
-                        #[cfg(not(target_os = "macos"))]
-                        {
-                            perf = parent.subtype() == Some(c"IntelCore");
                         }
                     }
                     if let Some(ObjectAttributes::Cache(cache)) = parent.attributes() {
@@ -324,7 +320,7 @@ fn fetch_info(state: State<'_, AppState>) -> Result<UpdatePayload, String> {
                 util: 0.0,
                 l1: 0,
                 l2: 0,
-                perf: true,
+                perf: 2,
                 os: 0,
             })
             .collect()
@@ -471,7 +467,7 @@ fn update_gpu_info(state: &AppState) -> Result<GPUPayload, String> {
             let util = gpu.utilization as f32;
             let vu = (gpu.used_memory as f64 * 0.000000001) as f32;
             let temp = gpu.temperature as f32;
-            let freq = gpu.frequency as f32;
+            let freq = (gpu.frequency as f64 / 1000.0) as f32;
             let power = gpu.power_consumption as f32;
 
             Ok(GPUPayload {
@@ -581,77 +577,77 @@ fn switch_info(other: u32, state: State<'_, AppState>) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let mut sys = System::new_all();
-    sys.refresh_all();
-    let comp = Components::new_with_refreshed_list();
-
-    let system = SystemInfo {
-        name: get_computer_name(),
-        os: {
-            let raw = System::name().unwrap_or("Unknown".to_string());
-            if raw == "Darwin" {
-                "macOS".to_string()
-            } else {
-                raw
-            }
-        },
-        version: System::os_version().unwrap_or("Unknown".to_string()),
-        uptime: format_time(System::uptime()),
-        processes: sys.processes().len() as u32,
-        load: System::load_average().one as f32,
-        swap: (sys.used_swap() as f32) * 0.000000001,
-        variance: 0.0,
-    };
-    let smi = AllSmi::new().ok();
-    
-    let mut base_gpu = GPUPayload {
-            util: 0.0,
-            vu: 0.0,
-            vt: 0.1,
-            temp: 0.0,
-            name: "Unknown".to_string(),
-            hname: "Unknown".to_string(),
-            freq: 0.0,
-            power: 0.0,
-            cores: 0,
-        };
-
-    if let Some(s) = &smi {
-        let gpu_info = s.get_gpu_info();
-
-        let cores = if let Some(gpu) = s.get_gpu_info().get(0) {
-            gpu.gpu_core_count.unwrap_or(0)
-        } else {
-            0
-        };
-
-        base_gpu = GPUPayload {
-            util: 0.0,
-            vu: 0.0,
-            vt: if let Some(g) = gpu_info.get(0) {
-                (g.total_memory as f64 * 0.000000001) as f32
-            } else {
-                0.1
-            },
-            temp: 0.0,
-            name: if let Some(g) = gpu_info.get(0) {
-                g.name.clone()
-            } else {
-                "Unknown".to_string()
-            },
-            hname: if let Some(g) = gpu_info.get(0) {
-                g.hostname.clone()
-            } else {
-                "Unknown".to_string()
-            },
-            freq: 0.0,
-            power: 0.0,
-            cores,
-        };
-    }
-
     tauri::Builder::default()
         .setup(|app| {
+            let mut sys = System::new_all();
+            sys.refresh_all();
+            let comp = Components::new_with_refreshed_list();
+
+            let system = SystemInfo {
+                name: get_computer_name(),
+                os: {
+                    let raw = System::name().unwrap_or("Unknown".to_string());
+                    if raw == "Darwin" {
+                        "macOS".to_string()
+                    } else {
+                        raw
+                    }
+                },
+                version: System::os_version().unwrap_or("Unknown".to_string()),
+                uptime: format_time(System::uptime()),
+                processes: sys.processes().len() as u32,
+                load: System::load_average().one as f32,
+                swap: (sys.used_swap() as f32) * 0.000000001,
+                variance: 0.0,
+            };
+            let smi = AllSmi::new().ok();
+
+            let mut base_gpu = GPUPayload {
+                util: 0.0,
+                vu: 0.0,
+                vt: 0.1,
+                temp: 0.0,
+                name: "Unknown".to_string(),
+                hname: "Unknown".to_string(),
+                freq: 0.0,
+                power: 0.0,
+                cores: 0,
+            };
+
+            if let Some(s) = &smi {
+                let gpu_info = s.get_gpu_info();
+
+                let cores = if let Some(gpu) = s.get_gpu_info().get(0) {
+                    gpu.gpu_core_count.unwrap_or(0)
+                } else {
+                    0
+                };
+
+                base_gpu = GPUPayload {
+                    util: 0.0,
+                    vu: 0.0,
+                    vt: if let Some(g) = gpu_info.get(0) {
+                        (g.total_memory as f64 * 0.000000001) as f32
+                    } else {
+                        0.1
+                    },
+                    temp: 0.0,
+                    name: if let Some(g) = gpu_info.get(0) {
+                        g.name.clone()
+                    } else {
+                        "Unknown".to_string()
+                    },
+                    hname: if let Some(g) = gpu_info.get(0) {
+                        g.hostname.clone()
+                    } else {
+                        "Unknown".to_string()
+                    },
+                    freq: 0.0,
+                    power: 0.0,
+                    cores,
+                };
+            }
+
             let app_dir = app
                 .path()
                 .app_data_dir()
