@@ -145,9 +145,6 @@ fn update_info(state: &AppState) -> Result<UpdatePayload, String> {
         return Err("not yet initialised".to_string());
     }
 
-    sys.refresh_cpu_usage();
-    sys.refresh_cpu_frequency();
-
     let cpu = update_cpu(state, &mut sys, &base)?;
     let threads = update_threads(&mut sys, &base.threads)?;
 
@@ -701,6 +698,11 @@ pub fn run() {
 
                     match inf.clone() {
                         0 => {
+                            {
+                                if let Some(mut sys) = state.sys.lock().ok() {
+                                    sys.refresh_cpu_all();
+                                }
+                            }
                             std::thread::sleep(Duration::from_secs(2));
                             if let Ok(info) = update_info(&state) {
                                 h.emit("update_info", info).unwrap_or_else(|e| {
